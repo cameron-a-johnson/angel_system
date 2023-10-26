@@ -123,3 +123,9 @@ windows:
             --task_updates_topic=TaskUpdates
             --activity_detections_topic=ActivityDetections
             --task_errors_topic=TaskErrors
+
+  - ros_bag_record: cd ros_bags; ros2 bag record
+      ${ROS_NAMESPACE}/ActivityDetections
+      ${ROS_NAMESPACE}/PVFramesRGB
+      #-o ${PARAMS_ROS_BAG_OUT}
+

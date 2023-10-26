@@ -4,6 +4,7 @@ import logging
 import json
 import re
 import os
+import kwcoco
 from typing import Dict
 from typing import List
 from typing import Sequence
@@ -473,6 +474,16 @@ def steps_from_ros_export_json(filepath: str) -> Tuple[List[str], List[Activity]
             )
         )
     return step_seq
+
+def steps_from_activities_mscoco_json(filepath: str) -> Tuple[List[str], List[Activity]]:
+    '''
+    Load predicted steps from an MSCOCO JSON file that is the result of running
+    object detection + "local" activity classification.
+
+    Then compute the HMM results.
+    '''
+    log.info(f"Loading predicted steps from: {filepath}")
+    coco_acts = kwcoco.CocoDataset(filepath)
 
 
 def activities_from_ros_export_json(filepath: str) -> Tuple[List[str], List[Activity]]:

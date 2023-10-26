@@ -10,6 +10,7 @@ import time
 
 from angel_system.data.common.load_data import time_from_name
 from angel_system.data.common.load_data import activities_from_dive_csv
+from angel_system.data.common.load_data import sanitize_str
 
 try:
     import matplotlib.pyplot as plt
@@ -1350,7 +1351,7 @@ def load_and_discretize_data(
         gt = []
         for i, row in enumerate(gt0):
             g = {
-                "class": row.class_label.lower().strip(),
+                "class": sanitize_str(row.class_label),
                 "start": row.start,
                 "end": row.end,
             }
@@ -1362,7 +1363,7 @@ def load_and_discretize_data(
         gt = []
         for i, row in gt_f.iterrows():
             g = {
-                "class": row["class"].lower().strip(),
+                "class": sanitize_str(row["class"]),
                 "start": time_from_name(row["start_frame"]),
                 "end": time_from_name(row["end_frame"]),
             }
@@ -1385,7 +1386,7 @@ def load_and_discretize_data(
 
         for l in dets["label_vec"]:
             d = {
-                "class": l.lower().strip(),
+                "class": sanitize_str(l),
                 "start": dets["source_stamp_start_frame"],
                 "end": dets["source_stamp_end_frame"],
                 "conf": good_dets[l],
@@ -1398,7 +1399,7 @@ def load_and_discretize_data(
     # ============================
     # Load labels
     # ============================
-    labels0 = [l.lower().strip().rstrip(".") for l in detections["class"]]
+    labels0 = [sanitize_str(l) for l in detections["class"]]
     labels = []
     labels_ = set()
     for label in labels0:
@@ -1453,17 +1454,142 @@ def load_and_discretize_data(
         ind1, ind2 = get_time_wind_range(detections["start"][i], detections["end"][i])
 
         valid[ind1:ind2] = True
-        correct_label = detections["class"][i].strip().rstrip(".")
+        correct_label = sanitize_str(detections["class"][i])
         correct_class_idx = labels.index(correct_label)
         dets_per_valid_time_w[ind1:ind2, correct_class_idx] = np.maximum(
             dets_per_valid_time_w[ind1:ind2, correct_class_idx], detections["conf"][i]
         )
 
+    def long_to_short(longstring):
+        pairs = [
+                {
+                    "short":"background",
+                    "long":"background",
+                },
+                {
+                    "short":"measure-12oz-water",
+                    "long":"measure 12 ounces of water in the liquid measuring cup",
+                },
+                {
+                    "short":"pour-water-kettle",
+                    "long":"pour the water from the liquid measuring cup into the electric kettle",
+                },
+                {
+                    "short":"place-dipper-on-mug",
+                    "long":"place the dripper on top of the mug",
+                },
+                {
+                    "short":"filter-fold-half",
+                    "long":"take the coffee filter and fold it in half to create a semi-circle",
+                },
+                {
+                    "short":"filter-fold-quarter",
+                    "long":"fold the filter in half again to create a quarter-circle",
+                },
+                {
+                    "short":"place-filter",
+                    "long":"place the folded filter into the dripper such that the the point of the quarter-circle rests in the center of the dripper",
+                },
+                {
+                    "short":"spread-filter",
+                    "long":"spread the filter open to create a cone inside the dripper",
+                },
+                {
+                    "short":"scale-turn-on",
+                    "long":"turn on the kitchen scale",
+                },
+                {
+                    "short":"place-bowl-on-scale",
+                    "long":"place a bowl on the scale",
+                },
+                {
+                    "short":"zero-scale",
+                    "long":"zero the scale",
+                },
+                {
+                    "short":"measure-coffee-beans",
+                    "long":"add coffee beans to the bowl until the scale reads 25 grams",
+                },
+                {
+                    "short":"pour-coffee-grinder",
+                    "long":"pour the measured coffee beans into the coffee grinder",
+                },
+                {
+                    "short":"pour-coffee-grinder",
+                    "long":"set timer for 20 seconds",
+                },
+                {
+                    "short":"pour-coffee-grinder",
+                    "long":"turn on the timer",
+                },
+                {
+                    "short":"grind-beans",
+                    "long":"grind the coffee beans by pressing and holding down on the black part of the lid",
+                },
+                {
+                    "short":"pour-beans-filter",
+                    "long":"pour the grounded coffee beans into the filter cone prepared in step 2",
+                },
+                {
+                    "short":"thermometer-turn-on",
+                    "long":"turn on the thermometer",
+                },
+                {
+                    "short":"thermometer-in-water",
+                    "long":"place the end of the thermometer into the water",
+                },
+                {
+                    "short":"thermometer-in-water",
+                    "long":"set timer to 30 seconds",
+                },
+                {
+                    "short":"check-thermometer",
+                    "long":"idk TODO add check-thermometer long string",
+                },
+                {
+                    "short":"pour-water-grounds-wet",
+                    "long":"pour a small amount of water over the grounds in order to wet the grounds",
+                },
+                {
+                    "short":"pour-water-grounds-circular",
+                    "long":"slowly pour the water over the grounds in a circular motion. do not overfill beyond the top of the paper filter",
+                },
+                {
+                    "short":"water-drain",
+                    "long":"allow the rest of the water in the dripper to drain",
+                },
+                {
+                    "short":"remove-dripper",
+                    "long":"remove the dripper from the cup",
+                },
+                {
+                    "short":"remove-grounds",
+                    "long":"remove the coffee grounds and paper filter from the dripper",
+                },
+                {
+                    "short":"discard-grounds",
+                    "long":"discard the coffee grounds and paper filter",
+                },
+                {
+                    "short":"turn-on-kettle",
+                    "long":"turn on the kettle",
+                },
+            ]
+        short_string = list(filter(lambda a: a["long"] == longstring, pairs))[0]['short']
+        short_string = sanitize_str(short_string)
+        return short_string
+
+
     gt_true_mask = np.zeros((len(time_windows), len(labels)), dtype=bool)
     for i in range(len(gt)):
         ind1, ind2 = get_time_wind_range(gt["start"][i], gt["end"][i])
-        correct_label = gt["class"][i].strip().rstrip(".")
-        correct_class_idx = labels.index(correct_label)
+        correct_label = sanitize_str(gt["class"][i])
+        print(f"gt {gt}")
+        print(f"gt keys {gt.keys()}")
+        print(f"LABELS {labels}")
+        print(f"correct_label {correct_label}")
+        #import ipdb; ipdb.set_trace()
+        correct_class_idx = labels.index(long_to_short(correct_label))
         gt_true_mask[ind1:ind2, correct_class_idx] = True
 
     if not np.all(np.sum(gt_true_mask, axis=1) <= 1):
